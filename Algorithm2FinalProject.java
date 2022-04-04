@@ -293,14 +293,14 @@ class DGraph {
 
     String[] Dijkstra(int v0, int v1) {
         int v = this.v;
-        boolean[] relaxed = new boolean[v];
+        boolean[] addedToPQ = new boolean[v];
         double[] dist = new double[v];  // dist[i] = min distance between v0 and vi
         int[] prev = new int[v];
 
         // initialize the visited array as all false and get distance from v0 to every other vertex
 
-        Arrays.fill(relaxed, false);
-        relaxed[v0] = true;
+        Arrays.fill(addedToPQ, false);
+        addedToPQ[v0] = true;
         Arrays.fill(dist, Double.MAX_VALUE);
         dist[v0] = 0;
         Arrays.fill(prev, -1);
@@ -358,7 +358,7 @@ class DGraph {
                         dist[vertexToRelax.index] = dist[vertexClosestToV0.index] + vertexToRelax.weight;
                         prev[vertexToRelax.index] = vertexClosestToV0.index;
                     }
-                    relaxed[vertexToRelax.index] = true; // THIS IS RIGHT, a better idea to record all the vertices
+                    addedToPQ[vertexToRelax.index] = true; // THIS IS RIGHT, a better idea to record all the vertices
                     // that are adjacent to the nodes we already visited, these vertices are the next to take into consideration to relax.
                     vertexPQ.add(new Vertex(vertexToRelax.index, dist[vertexToRelax.index]));
                 }
@@ -368,11 +368,7 @@ class DGraph {
         ##
         #  The version 1 code has a typical waste of resources as it traverses all the vertices including those who are not adjacent
         #  to the vertices we already visited, hence visiting these vertices would simply do nothing but waste time let alone relaxing.
-        #  version 2 fixes as it focus on building a priority queue which consists of vertices that are relaxed. THIS IS THE KEY POINT:
-        #  --------------------------------------------------------------------------
-        #  A vertex v can only be relaxed ONCE to get its dist[v] best result
-        #  --------------------------------------------------------------------------
-        #  so once a vertex is relaxed there is no need to do it again anymore!
+        #  version 2 fixes as it focus on maintaining a priority queue which consists of vertices that are to be relaxed.
         ##
 
         */
@@ -387,12 +383,12 @@ class DGraph {
             for (Vertex vertexToRelax : vertexList) {
                 double w = vertexToRelax.weight;
                 int i = vertexToRelax.index;
-                if (!relaxed[i] && w < Double.MAX_VALUE) {
+                if (!addedToPQ[i] && w < Double.MAX_VALUE) {
                     if (w + dist[u] < dist[i]) {
                         dist[i] = w + dist[u];
                         prev[i] = u;
                     }
-                    relaxed[i] = true;
+                    addedToPQ[i] = true;
                     verticesAdjacentPQ.add(new Vertex(i, dist[i]));
                 }
             }
@@ -444,7 +440,7 @@ public class Algorithm2FinalProject {
         return 0;
     }
 
-    static Iterable<String> getStopsList(String keyword) {
+    static LinkedList<String> getStopsList(String keyword) {
         TST<String> stopsSearchTries = new TST<>();
 
         try {
@@ -460,7 +456,7 @@ public class Algorithm2FinalProject {
                     stopName = bufferedReader.readLine().split(",")[2].trim();
                 } catch (NullPointerException e) {break;}
             }
-            return stopsSearchTries.keysWithPrefix(keyword);
+            return (LinkedList<String>)stopsSearchTries.keysWithPrefix(keyword);
         } catch (FileNotFoundException e) {
             System.out.println("File not found exception");
             e.printStackTrace();
@@ -575,8 +571,8 @@ public class Algorithm2FinalProject {
         try {
             String[] HHMMSS1 = time1.split(":");
             String[] HHMMSS2 = time2.split(":");
-            if (HHMMSS1.length != HHMMSS2.length) return false;
-            for (int i = 0; i < HHMMSS1.length; ++i) {
+            if (HHMMSS1.length != HHMMSS2.length || HHMMSS1.length != 3) return false;
+            for (int i = 0; i < 3; i++) {
                 if (Integer.parseInt(HHMMSS1[i].trim()) != Integer.parseInt(HHMMSS2[i].trim())) return false;
             }
             return true;
@@ -629,15 +625,14 @@ public class Algorithm2FinalProject {
             String[] array_ans = new String[validTripIdsAndStops.size()];
             Collections.sort(validTripIdsAndStops);
             int i = 0;
-            // Using foreach as order is preserved in it
             for (Pair p : validTripIdsAndStops) {
                 array_ans[i++] = "Trip Id: " + p.tripId + " with stops : " + p.stops;
             }
             reader.close();
             return array_ans;
         } catch (Exception e) {
-            System.out.println(e);
-            return new String[0];
+            e.printStackTrace();
+            return null;
         }
     }
     public static boolean mode1(Scanner scanner) {
@@ -681,40 +676,33 @@ public class Algorithm2FinalProject {
     }
 
     public static boolean mode2(Scanner scanner) {
-        boolean exit = false;
-        boolean validInput2 = false;
-        String inputString;
+        String input;
         scanner.nextLine();
 
-        while (!validInput2 && !exit) {
-            System.out.print("Enter the bus stop name:");
-            inputString = scanner.nextLine();
-            if (inputString.equalsIgnoreCase("exit")) {
-                exit = true;
-            } else if (Pattern.matches(".*[a-zA-Z]+.*", inputString)) {
-                validInput2 = true;
-                Iterable<String> results = getStopsList(inputString.trim());
-                if (results == null) {
-                    System.out.println("No results have been found");
-                    return false;
-                } else for (String result: results) System.out.println(result);
+        while (true) {
+            System.out.print("Enter the bus stop name: ");
+            input = scanner.nextLine();
+            if (input.equalsIgnoreCase("exit")) {
+                return true;
+            } else if (Pattern.matches(".*[a-zA-Z]+.*", input)) {
+                LinkedList<String> results = getStopsList(input.trim());
+                if (results == null || results.size() == 0) System.out.println("No results have been found");
+                else for (String result : results) System.out.println(result);
+                return false;
             } else {
-                System.out.println("Please input valid stop name consisting of letters ONLY ");
+                System.out.println("Please input valid stop name consisting of letters and numbers (letters are essential) ");
             }
         }
-
-        return false;
     }
 
     public static boolean mode3(Scanner scanner) {
-        boolean exit = false;
         String inputString;
 
-        while (!exit) {
-            System.out.print("Enter the arrival time in the format hh:mm:ss :");
+        while (true) {
+            System.out.print("Enter the arrival time in such format as HH:MM:SS : ");
             inputString = scanner.next();
             if (inputString.equalsIgnoreCase("exit")) {
-                exit = true;
+                return true;
             } else
                 if (!isValidTime(inputString)) {
                     String[] result = searchForTripsByArrivalTime(inputString);
@@ -724,13 +712,16 @@ public class Algorithm2FinalProject {
                         for (String s : result) {
                             System.out.println(s);
                         }
+                        break;
                     }
                 }
                 else {
                     System.out.println("Please input a valid time");
                 }
+
         }
-        return exit;
+        return false;
+
     }
 
 
