@@ -5,9 +5,28 @@ import java.util.regex.Pattern;
 import java.util.Arrays;
 import java.util.List;
 
+class Trip {
+    private final Map<String, List<Integer>> map = new HashMap<>();
 
+    Trip() {}
+    void addStopToTrip(String tripID, int stopIndex, int stopID) {
+        List<Integer> arrayList = new ArrayList<>(10);
+        if (!map.containsKey(tripID)) {
+            arrayList.add(stopIndex, stopID);
+            map.put(tripID, arrayList);
+            return;
+        }
+        arrayList = map.get(tripID);
+        arrayList.add(stopIndex, stopID);
+        map.replace(tripID, arrayList);
+    }
 
+    Map<String, List<Integer>> getMap() {
+        return this.map;
+    }
+}
 
+// source: https://algs4.cs.princeton.edu/52trie/TST.java.html
 class TST<Value> {
     private int n;              // size
     private Node<Value> root;   // root of TST
@@ -163,7 +182,7 @@ class TST<Value> {
         return queue;
     }
 
-    // all keys in subtrie rooted at x with given prefix
+    // all keys in sub trie rooted at x with given prefix
     private void collect(Node<Value> x, StringBuilder prefix, Queue<String> queue) {
         if (x == null) return;
         collect(x.left,  prefix, queue);
@@ -475,22 +494,20 @@ public class Algorithm2FinalProject {
             BufferedReader bufferedReader = new BufferedReader(new FileReader(PATH_STOPS));
             String stopsInfoLine = bufferedReader.readLine();
             while (stopsInfoLine != null) {
-                String[] stopsInfoArray = stopsInfoLine.split(",");
                 try {
-                    largestStopID = Math.max(Integer.parseInt(stopsInfoArray[0]), largestStopID);
+                    largestStopID = Math.max(Integer.parseInt(stopsInfoLine.split(",")[0]), largestStopID);
                 } catch (NumberFormatException ignored) {
                 }
 
-                String stopName = stopsInfoArray[2];
+                String stopName = stopsInfoLine.split(",")[2];
                 if (start.equalsIgnoreCase(stopName)) {
                     startFound = true;
-                    startID = Integer.parseInt(stopsInfoArray[0]);
+                    startID = Integer.parseInt(stopsInfoLine.split(",")[0]);
                 }
                 if (end.equalsIgnoreCase(stopName)) {
                     endFound = true;
-                    endID = Integer.parseInt(stopsInfoArray[0]);
+                    endID = Integer.parseInt(stopsInfoLine.split(",")[0]);
                 }
-
                 stopsInfoLine = bufferedReader.readLine();
             }
             if (!startFound && endFound) {
@@ -581,59 +598,46 @@ public class Algorithm2FinalProject {
         }
     }
 
-    //  /*
-//   * Return empty string array if no stops exist with the given arrival time
-//   * Otherwise, return a string array of the details of all stops, sorted by their trip id
-//   * Look at project specification for details
-//   * */
-    public static String[] searchForTripsByArrivalTime(String inputString) {
-        List<Pair> validTripIdsAndStops = new LinkedList<>();
-        String readString = "";
-        String[] splitStrings = new String[9];
-        File fileObj = new File(PATH_STOP_TIMES);
+    public static HashMap<String, List<Integer>> searchForTripsByArrivalTime(String input) {
+        Trip trip = new Trip();
+        List<String> keysToLookUp = new ArrayList<>();
+        HashMap<String, List<Integer>> result = new HashMap<>();
+
         try {
-            Scanner reader = new Scanner(fileObj);
-            String lastTripId = "";
-            Boolean lastTripWasValid = false;
-            String stopsInLastTrip = "";
-            while (reader.hasNextLine()) {
-                readString = reader.nextLine();
-                splitStrings = readString.split(",");
-                if (splitStrings.length > 2 && isValidTime(splitStrings[1])) {
-                    if (splitStrings[0].compareTo(lastTripId) != 0) {
-                        if (lastTripWasValid) {
-                            validTripIdsAndStops.add(new Pair(lastTripId, stopsInLastTrip));
-                        }
-                        lastTripWasValid = false;
-                        stopsInLastTrip = splitStrings[3];
-                        lastTripId = splitStrings[0];
-                    } else {
-                        stopsInLastTrip += " -> " + splitStrings[3];
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(PATH_STOP_TIMES));
+            bufferedReader.readLine();
+            String currentLine = bufferedReader.readLine();
+            String tripID = currentLine.split(",")[0].trim();
+            String arrivalTime = currentLine.split(",")[1].trim();
+            int stopIndex = Integer.parseInt(currentLine.split(",")[4].trim()) - 1;
+            int stopID = Integer.parseInt(currentLine.split(",")[3].trim());
+            if (isValidTime(arrivalTime)) {
+                trip.addStopToTrip(tripID, stopIndex, stopID);
+                if (areTimesEqual(arrivalTime, input)) keysToLookUp.add(tripID);
+            }
+            while (true) {
+                try {
+                    currentLine = bufferedReader.readLine();
+                    tripID =  currentLine.split(",")[0].trim();
+                    arrivalTime = currentLine.split(",")[1].trim();
+                    stopIndex = Integer.parseInt(currentLine.split(",")[4].trim()) - 1;
+                    stopID = Integer.parseInt(currentLine.split(",")[3].trim());
+                    if (isValidTime(arrivalTime)) {
+                        trip.addStopToTrip(tripID, stopIndex, stopID);
+                        if (areTimesEqual(arrivalTime, input)) keysToLookUp.add(tripID);
                     }
-                    if (areTimesEqual(inputString, splitStrings[1])) {
-                        lastTripWasValid = true;
-                    }
-                }
+                } catch (NullPointerException e) {break;}
             }
-            if (lastTripWasValid) {
-                validTripIdsAndStops.add(new Pair(lastTripId, stopsInLastTrip));
-            }
-            if (validTripIdsAndStops.size() == 0) {
-                reader.close();
-                return new String[0];
-            }
-            String[] array_ans = new String[validTripIdsAndStops.size()];
-            Collections.sort(validTripIdsAndStops);
-            int i = 0;
-            for (Pair p : validTripIdsAndStops) {
-                array_ans[i++] = "Trip Id: " + p.tripId + " with stops : " + p.stops;
-            }
-            reader.close();
-            return array_ans;
+            if (keysToLookUp.size() == 0) return null;
+            for (String key : keysToLookUp) result.put(key, trip.getMap().get(key));
+            return result;
+        } catch (FileNotFoundException e) {
+            System.out.println("File not found exception");
+            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
         }
+        return null;
     }
     public static boolean mode1(Scanner scanner) {
 
@@ -696,24 +700,24 @@ public class Algorithm2FinalProject {
     }
 
     public static boolean mode3(Scanner scanner) {
-        String inputString;
+        String input;
 
         while (true) {
-            System.out.print("Enter the arrival time in such format as HH:MM:SS : ");
-            inputString = scanner.next();
-            if (inputString.equalsIgnoreCase("exit")) {
+            System.out.print("Enter the arrival time in the format of HH:MM:SS : ");
+            input = scanner.next();
+            if (input.equalsIgnoreCase("exit")) {
                 return true;
             } else
-                if (!isValidTime(inputString)) {
-                    String[] result = searchForTripsByArrivalTime(inputString);
-                    if (result.length == 0) {
-                        System.out.println("No trips exist with this arrival time");
+                if (isValidTime(input)) {
+                    HashMap<String, List<Integer>> result = searchForTripsByArrivalTime(input);
+                    if (result == null) {
+                        System.out.println("No trips found with the input arrival time");
                     } else {
-                        for (String s : result) {
-                            System.out.println(s);
+                        for (String key: result.keySet()) {
+                            System.out.println("Trip ID: " + key + " Route: " + result.get(key));
                         }
-                        break;
                     }
+                    break;
                 }
                 else {
                     System.out.println("Please input a valid time");
@@ -729,7 +733,7 @@ public class Algorithm2FinalProject {
         System.out.println("* Select one of the functions below to run");
         System.out.println("- 1. Finding shortest paths between 2 bus stops");
         System.out.println("- 2. Fuzzy or accurate Search for a bus stop");
-        System.out.println("- 3. Searching for all trips with a given arrival time");
+        System.out.println("- 3. Searching for trips given an arrival time");
 
         Scanner scan = new Scanner(System.in);
         boolean exit = false;
@@ -738,12 +742,12 @@ public class Algorithm2FinalProject {
             System.out.print("Type 1, 2, 3 or exit: ");
             String inputString = scan.next();
             try {
-                int modeChosen = Integer.parseInt(inputString);
-                switch (modeChosen) {
+                int mode = Integer.parseInt(inputString);
+                switch (mode) {
                     case 1: exit = mode1(scan); break;
                     case 2: exit = mode2(scan); break;
                     case 3: exit = mode3(scan); break;
-                    default: System.out.println("Current mode " + modeChosen + " is not supported yet"); break;
+                    default: System.out.println("Current mode " + mode + " is not supported yet"); break;
                 }
                 if (exit) break;
             } catch (NumberFormatException e) {
