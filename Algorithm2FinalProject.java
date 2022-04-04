@@ -393,7 +393,7 @@ class DGraph {
         */
 
         int u;
-        PriorityQueue<Vertex> verticesAdjacentPQ = new PriorityQueue<>(v, new Vertex());
+        PriorityQueue<Vertex> verticesAdjacentPQ = new PriorityQueue<>(this.v, new Vertex());
         verticesAdjacentPQ.add(new Vertex(v0, 0));
         while (!verticesAdjacentPQ.isEmpty()) {
             Vertex vertexClosestToV0 = verticesAdjacentPQ.poll();
