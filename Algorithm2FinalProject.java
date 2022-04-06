@@ -713,7 +713,10 @@ public class Algorithm2FinalProject {
                     if (result == null) {
                         System.out.println("No trips found with the input arrival time");
                     } else {
-                        for (String key: result.keySet()) {
+                        Set set = result.keySet();
+                        Object[] array = set.toArray();
+                        Arrays.sort(array);
+                        for (Object key: array) {
                             System.out.println("Trip ID: " + key + " Route: " + result.get(key));
                         }
                     }
